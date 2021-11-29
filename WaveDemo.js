@@ -4,7 +4,9 @@ var lightingFragmentShaderScript = `#version 300 es
     precision highp float;
 
     in vec3 v_normal;
+    in vec3 v_position;
 
+    uniform float u_time;
     uniform vec3 u_reverseLightDirection;
     uniform vec4 u_color;
 
@@ -21,7 +23,7 @@ var lightingFragmentShaderScript = `#version 300 es
       // of the normal to the light's reverse direction
       float light = dot(normal, u_reverseLightDirection);
 
-      out_color = u_color;
+      out_color = u_color * abs(sin(v_position.x / 20.0 + u_time / 1000.0));
 
       // Lets multiply just the color portion (not the alpha)
       // by the light
@@ -32,17 +34,19 @@ var lightingFragmentShaderScript = `#version 300 es
 var templateVertexShaderScript = `#version 300 es
 
     in vec3 a_position; 
-    in vec3 a_normal; 
+    in vec3 a_normal;
 
     uniform mat4 u_projectionMatrix;
     uniform mat4 u_modelViewMatrix;
 
     out vec3 v_normal;
+    out vec3 v_position;
 
     void main(void) 
     {
         gl_Position = u_projectionMatrix * u_modelViewMatrix * vec4(a_position, 1.0);
         v_normal = (u_projectionMatrix * u_modelViewMatrix * vec4(a_normal, 1.0)).xyz;
+        v_position = a_position;
     }
 `;
 
@@ -51,6 +55,7 @@ var projectionMatrix;
 var modelViewMatrix;
 var reverseLightDirection;
 var color;
+var numVertices = 0;
 
 function getLocations(program)
 {
@@ -60,6 +65,7 @@ function getLocations(program)
     program.u_modelViewMatrix = gl.getUniformLocation(program, "u_modelViewMatrix");
     program.u_color = gl.getUniformLocation(program, "u_color");
     program.u_reverseLightDirection = gl.getUniformLocation(program, "u_reverseLightDirection");
+    program.u_time = gl.getUniformLocation(program, "u_time");
 }
 
 function sendNewUniforms()
@@ -68,6 +74,7 @@ function sendNewUniforms()
     gl.uniformMatrix4fv(program.u_modelViewMatrix, false, modelViewMatrix);
     gl.uniform3fv(program.u_reverseLightDirection, reverseLightDirection);
     gl.uniform4fv(program.u_color, color);
+    gl.uniform1f(program.u_time, lastTime);
 }
 
 function initUniforms()
@@ -86,131 +93,51 @@ function initUniforms()
 
 function initBuffers()
 {
+    numVertices = 0;
+    var vertices = [];
+    var normals = [];
+    for (var i = 0; i < 20; i++)
+    {
+        vertices.push(-200 + (i * 20), -50, 0); 
+        vertices.push(-200 + (i * 20), 50, 0); 
+        vertices.push(-200 + ((i + 1) * 20), 50, 0); 
+
+        vertices.push(-200 + (i * 20), -50, 0); 
+        vertices.push(-200 + ((i + 1) * 20), 50, 0); 
+        vertices.push(-200 + ((i + 1) * 20), -50, 0); 
+
+        normals.push(0, 0, 1);
+        normals.push(0, 0, 1);
+        normals.push(0, 0, 1);
+        normals.push(0, 0, 1);
+        normals.push(0, 0, 1);
+        normals.push(0, 0, 1);
+
+        numVertices += 6;
+    }
+
     var vertexBuffer = gl.createBuffer();
     templateVertexArrayObject = gl.createVertexArray();
     gl.bindVertexArray(templateVertexArrayObject);
-
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.enableVertexAttribArray(program.a_position);
-
     var size = 3;
     var type = gl.FLOAT;
     var normalize = false;
     var stride = 0;
     var offset = 0;
     gl.vertexAttribPointer(program.a_position, size, type, normalize, stride, offset);
-
-    var vertices = [
-        // Bottom face
-        -35, -35, -35,
-        35, -35, -35,
-        35, -35, 35,
-        -35, -35, -35,
-        35, -35, 35,
-        -35, -35, 35,
-
-        // Top face
-        -35, 35, -35,
-        35, 35, -35,
-        35, 35, 35,
-        -35, 35, -35,
-        35, 35, 35,
-        -35, 35, 35,
-
-        // Left face
-        -35, -35, -35,
-        -35, -35, 35,
-        -35, 35, 35,
-        -35, -35, -35,
-        -35, 35, 35,
-        -35, 35, -35,
-        
-        // Right face
-        35, -35, -35,
-        35, -35, 35,
-        35, 35, 35,
-        35, -35, -35,
-        35, 35, 35,
-        35, 35, -35,
-
-        // Back face
-        -35, -35, -35,
-        35, -35, -35,
-        35, 35, -35,
-        -35, -35, -35,
-        35, 35, -35,
-        -35, 35, -35,
-
-        // Front face
-        -35, -35, 35,
-        35, -35, 35,
-        35, 35, 35,
-        -35, -35, 35,
-        35, 35, 35,
-        -35, 35, 35
-    ];
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
     var normalBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
     gl.enableVertexAttribArray(program.a_normal);
-
     var size = 3;
     var type = gl.FLOAT;
     var normalize = false;
     var stride = 0;
     var offset = 0;
     gl.vertexAttribPointer(program.a_normal, size, type, normalize, stride, offset);
-
-    var normals = [
-        // Bottom face
-        0, -1, 0,
-        0, -1, 0,
-        0, -1, 0,
-        0, -1, 0,
-        0, -1, 0,
-        0, -1, 0,
-
-        // Top face
-        0, 1, 0,
-        0, 1, 0,
-        0, 1, 0,
-        0, 1, 0,
-        0, 1, 0,
-        0, 1, 0,
-
-        // Left face
-        -1, 0, 0,
-        -1, 0, 0,
-        -1, 0, 0,
-        -1, 0, 0,
-        -1, 0, 0,
-        -1, 0, 0,
-        
-        // Right face
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-        1, 0, 0,
-
-        // Back face
-        0, 0, -1,
-        0, 0, -1,
-        0, 0, -1,
-        0, 0, -1,
-        0, 0, -1,
-        0, 0, -1,
-
-        // Front face
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1,
-        0, 0, 1
-    ];
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
 }
 
@@ -224,7 +151,7 @@ function drawScene()
     sendNewUniforms();
 
     var offset = 0;
-    gl.drawArrays(gl.TRIANGLES, offset, 36);
+    gl.drawArrays(gl.TRIANGLES, offset, numVertices);
 }
 
 function rotateSquares(key)
@@ -250,8 +177,19 @@ function rotateSquares(key)
             glMatrix.mat4.rotateZ(modelViewMatrix, modelViewMatrix, -0.1);
             break;
     }
+}
 
+var lastTime = 0;
+function tick(now)
+{
     drawScene();
+    if (lastTime != 0) 
+    {
+        var elapsed = now - lastTime;
+    }
+
+    lastTime = now;
+    requestAnimationFrame(tick);
 }
 
 function demoStart() 
@@ -270,5 +208,5 @@ function demoStart()
     initBuffers();
 
     document.addEventListener('keypress', rotateSquares);
-    drawScene();
+    tick();
 }
