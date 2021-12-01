@@ -1,5 +1,5 @@
-var lightingProgram;
-var lightingFragmentShaderScript = `#version 300 es
+var waveProgram;
+var waveFragmentShaderScript = `#version 300 es
 
     precision highp float;
 
@@ -23,7 +23,8 @@ var lightingFragmentShaderScript = `#version 300 es
       // of the normal to the light's reverse direction
       float light = dot(normal, u_reverseLightDirection);
 
-      out_color = u_color * abs(sin(v_position.x / 20.0 + u_time / 1000.0));
+      out_color = u_color;
+      out_color.rgb *= abs(sin(v_position.y / 20.0 + u_time / 1000.0));
 
       // Lets multiply just the color portion (not the alpha)
       // by the light
@@ -31,26 +32,36 @@ var lightingFragmentShaderScript = `#version 300 es
     }
 `;
 
-var templateVertexShaderScript = `#version 300 es
+var waveVertexShaderScript = `#version 300 es
 
     in vec3 a_position; 
     in vec3 a_normal;
 
     uniform mat4 u_projectionMatrix;
     uniform mat4 u_modelViewMatrix;
+    uniform float u_time;
 
     out vec3 v_normal;
     out vec3 v_position;
 
     void main(void) 
     {
-        gl_Position = u_projectionMatrix * u_modelViewMatrix * vec4(a_position, 1.0);
-        v_normal = (u_projectionMatrix * u_modelViewMatrix * vec4(a_normal, 1.0)).xyz;
-        v_position = a_position;
+        vec3 newPosition = a_position;
+        newPosition.z += 50.0 * sin(newPosition.x / 20.0 + u_time / 1000.0);
+        gl_Position = u_projectionMatrix * u_modelViewMatrix * vec4(newPosition, 1.0);
+
+        vec3 newNormal = normalize(vec3(-1, cos(newPosition.x / 20.0 + u_time / 1000.0), 1));
+        //v_normal = (u_projectionMatrix * u_modelViewMatrix * vec4(newNormal, 1.0)).xyz;
+        v_normal = (u_modelViewMatrix * vec4(newNormal, 1.0)).xyz;
+        v_position = newPosition;
     }
 `;
 
-var templateVertexArrayObject;
+// Debug shaders to show arrows for lighting and normals!
+// var debugVertexShaderScript;
+// var debugFragmentShaderScript;
+
+var waveVertexArrayObject;
 var projectionMatrix;
 var modelViewMatrix;
 var reverseLightDirection;
@@ -117,8 +128,8 @@ function initBuffers()
     }
 
     var vertexBuffer = gl.createBuffer();
-    templateVertexArrayObject = gl.createVertexArray();
-    gl.bindVertexArray(templateVertexArrayObject);
+    waveVertexArrayObject = gl.createVertexArray();
+    gl.bindVertexArray(waveVertexArrayObject);
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.enableVertexAttribArray(program.a_position);
     var size = 3;
@@ -146,7 +157,7 @@ function drawScene()
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.useProgram(lightingProgram);
+    gl.useProgram(waveProgram);
 
     sendNewUniforms();
 
@@ -199,8 +210,8 @@ function demoStart()
 
     initUniforms();
 
-    lightingProgram = createProgram(lightingFragmentShaderScript, templateVertexShaderScript);
-    getLocations(lightingProgram);
+    waveProgram = createProgram(waveFragmentShaderScript, waveVertexShaderScript);
+    getLocations(waveProgram);
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
