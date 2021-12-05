@@ -24,7 +24,8 @@ var waveFragmentShaderScript = `#version 300 es
       float light = dot(normal, u_reverseLightDirection);
 
       out_color = u_color;
-      out_color.rgb *= abs(sin(v_position.y / 20.0 + u_time / 1000.0));
+      //out_color.rgb *= abs(normal.x);
+      //out_color.rgb *= abs(sin(v_position.y / 20.0 + u_time / 1000.0));
 
       // Lets multiply just the color portion (not the alpha)
       // by the light
@@ -35,7 +36,7 @@ var waveFragmentShaderScript = `#version 300 es
 var waveVertexShaderScript = `#version 300 es
 
     in vec3 a_position; 
-    in vec3 a_normal;
+    in vec3 a_normal; // Unused, only here for sample code for multiple buffers
 
     uniform mat4 u_projectionMatrix;
     uniform mat4 u_modelViewMatrix;
@@ -50,16 +51,12 @@ var waveVertexShaderScript = `#version 300 es
         newPosition.z += 50.0 * sin(newPosition.x / 20.0 + u_time / 1000.0);
         gl_Position = u_projectionMatrix * u_modelViewMatrix * vec4(newPosition, 1.0);
 
-        vec3 newNormal = normalize(vec3(-1, cos(newPosition.x / 20.0 + u_time / 1000.0), 1));
-        //v_normal = (u_projectionMatrix * u_modelViewMatrix * vec4(newNormal, 1.0)).xyz;
+        vec3 newNormal = a_normal; // Unused, only here for sample code for multiple buffers, to prevent out of range warning
+        newNormal = normalize(vec3(cos(newPosition.x / 20.0 + u_time / 1000.0), 0, 1));
         v_normal = (u_modelViewMatrix * vec4(newNormal, 1.0)).xyz;
         v_position = newPosition;
     }
 `;
-
-// Debug shaders to show arrows for lighting and normals!
-// var debugVertexShaderScript;
-// var debugFragmentShaderScript;
 
 var waveVertexArrayObject;
 var projectionMatrix;
@@ -96,7 +93,7 @@ function initUniforms()
     modelViewMatrix = glMatrix.mat4.create();
     glMatrix.mat4.identity(modelViewMatrix);
 
-    reverseLightDirection = glMatrix.vec3.fromValues(1, 1, -1);
+    reverseLightDirection = glMatrix.vec3.fromValues(1, 1, 1);
     glMatrix.vec3.normalize(reverseLightDirection, reverseLightDirection);
 
     color = glMatrix.vec4.fromValues(0, 1, 0, 1);
@@ -109,20 +106,20 @@ function initBuffers()
     var normals = [];
     for (var i = 0; i < 20; i++)
     {
-        vertices.push(-200 + (i * 20), -50, 0); 
-        vertices.push(-200 + (i * 20), 50, 0); 
-        vertices.push(-200 + ((i + 1) * 20), 50, 0); 
+        vertices.push(-200.0+ (i * 20.0), -50.0, 0.0); 
+        vertices.push(-200.0+ (i * 20.0), 50.0, 0.0); 
+        vertices.push(-200.0+ ((i + 1) * 20.0), 50.0, 0.0); 
 
-        vertices.push(-200 + (i * 20), -50, 0); 
-        vertices.push(-200 + ((i + 1) * 20), 50, 0); 
-        vertices.push(-200 + ((i + 1) * 20), -50, 0); 
+        vertices.push(-200.0+ (i * 20.0), -50.0, 0.0); 
+        vertices.push(-200.0+ ((i + 1) * 20.0), 50.0, 0.0); 
+        vertices.push(-200.0+ ((i + 1) * 20.0), -50.0, 0.0); 
 
-        normals.push(0, 0, 1);
-        normals.push(0, 0, 1);
-        normals.push(0, 0, 1);
-        normals.push(0, 0, 1);
-        normals.push(0, 0, 1);
-        normals.push(0, 0, 1);
+        normals.push(0.0, 0.0, 1.0);
+        normals.push(0.0, 0.0, 1.0);
+        normals.push(0.0, 0.0, 1.0);
+        normals.push(0.0, 0.0, 1.0);
+        normals.push(0.0, 0.0, 1.0);
+        normals.push(0.0, 0.0, 1.0);
 
         numVertices += 6;
     }
@@ -170,22 +167,22 @@ function rotateSquares(key)
     switch (key.code)
     {
         case 'KeyQ':
-            glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, 0.1);
+            glMatrix.mat4.rotateX(projectionMatrix, projectionMatrix, 0.1);
             break;
         case 'KeyW':
-            glMatrix.mat4.rotateX(modelViewMatrix, modelViewMatrix, -0.1);
+            glMatrix.mat4.rotateX(projectionMatrix, projectionMatrix, -0.1);
             break;
         case 'KeyA':
-            glMatrix.mat4.rotateY(modelViewMatrix, modelViewMatrix, 0.1);
+            glMatrix.mat4.rotateY(projectionMatrix, projectionMatrix, 0.1);
             break;
         case 'KeyS':
-            glMatrix.mat4.rotateY(modelViewMatrix, modelViewMatrix, -0.1);
+            glMatrix.mat4.rotateY(projectionMatrix, projectionMatrix, -0.1);
             break;
         case 'KeyZ':
-            glMatrix.mat4.rotateZ(modelViewMatrix, modelViewMatrix, 0.1);
+            glMatrix.mat4.rotateZ(projectionMatrix, projectionMatrix, 0.1);
             break;
         case 'KeyX':
-            glMatrix.mat4.rotateZ(modelViewMatrix, modelViewMatrix, -0.1);
+            glMatrix.mat4.rotateZ(projectionMatrix, projectionMatrix, -0.1);
             break;
     }
 }
